@@ -117,10 +117,10 @@ under the License.
 		</dependency>
 
 		<!-- Add the 'javax.annotation' annotations (JSR305), such as '@Nullable' -->
-		<dependency>
-			<groupId>com.google.code.findbugs</groupId>
-			<artifactId>jsr305</artifactId>
-		</dependency>
+		<!--<dependency>-->
+			<!--<groupId>com.google.code.findbugs</groupId>-->
+			<!--<artifactId>jsr305</artifactId>-->
+		<!--</dependency>-->
 		
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -201,11 +201,11 @@ under the License.
 		<dependencies>
 
 			<!-- This manages the 'javax.annotation' annotations (JSR305) -->
-			<dependency>
-				<groupId>com.google.code.findbugs</groupId>
-				<artifactId>jsr305</artifactId>
-				<version>1.3.9</version>
-			</dependency>
+			<!--<dependency>-->
+				<!--<groupId>com.google.code.findbugs</groupId>-->
+				<!--<artifactId>jsr305</artifactId>-->
+				<!--<version>1.3.9</version>-->
+			<!--</dependency>-->
 			
 			<!-- Make sure we use a consistent avro version throughout the project -->
 			<dependency>
