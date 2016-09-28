@@ -109,6 +109,17 @@ public class CliFrontendRunTest {
 				assertEquals("--arg2", options.getProgramArgs()[3]);
 				assertEquals("value2", options.getProgramArgs()[4]);
 			}
+
+			// test additional configuration file
+			{
+				String[] parameters =
+					{"-ac",CliFrontendTestUtils.getAdditionalConfFile(),getTestJarPath()};
+				RunOptions options = CliFrontendParser.parseRunCommand(parameters);
+				CliFrontend testFrontend = new CliFrontend(CliFrontendTestUtils.getConfigDir());
+				ClusterClient client = testFrontend.createClient(options,"test");
+				assertEquals("additional",client.getFlinkConfiguration().getString("test.parameter.for.additional.conf",null));
+				assertEquals("default",client.getFlinkConfiguration().getString("test.parameter.not.in.additional",null));
+			}
 		}
 		catch (Exception e) {
 			e.printStackTrace();

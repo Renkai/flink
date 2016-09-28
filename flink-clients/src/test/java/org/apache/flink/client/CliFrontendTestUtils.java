@@ -67,6 +67,11 @@ public class CliFrontendTestUtils {
 		return new File(confFile).getAbsoluteFile().getParent();
 	}
 
+	public static String getAdditionalConfFile() {
+		String confFile = CliFrontendRunTest.class.getResource("/testconfig/additional-flink-conf.yaml").getFile();
+		return new File(confFile).getAbsolutePath();
+	}
+
 	public static void pipeSystemOutToNull() {
 		System.setOut(new PrintStream(new BlackholeOutputSteam()));
 		System.setErr(new PrintStream(new BlackholeOutputSteam()));

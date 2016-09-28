@@ -872,20 +872,37 @@ public class CliFrontend {
 	 * @throws Exception
 	 */
 	protected ClusterClient createClient(
-			CommandLineOptions options,
+			ProgramOptions options,
 			String programName) throws Exception {
 
 		// Get the custom command-line (e.g. Standalone/Yarn/Mesos)
 		CustomCommandLine<?> activeCommandLine = getActiveCustomCommandLine(options.getCommandLine());
 
 		ClusterClient client;
+		Configuration additionalConf;
+		String additionalConfFilePath = options.getAdditionalConfFilePath();
+		if (additionalConfFilePath != null){
+			logAndSysout("Additional configuration file path: " + additionalConfFilePath);
+			File confFile = new File(additionalConfFilePath);
+			if (!confFile.exists()) {
+				throw new FileNotFoundException("Additional configuration file does not exist: " + confFile);
+			}
+			else if (!confFile.isFile()) {
+				throw new FileNotFoundException("Additional configuration file is not a file: " + confFile);
+			}
+			additionalConf = config.clone();
+			additionalConf.addAll(GlobalConfiguration.loadYAMLResource(confFile));
+		} else {
+			additionalConf = config;
+		}
+
 		try {
-			client = activeCommandLine.retrieveCluster(options.getCommandLine(), config);
+			client = activeCommandLine.retrieveCluster(options.getCommandLine(), additionalConf);
 			logAndSysout("Cluster configuration: " + client.getClusterIdentifier());
 		} catch (UnsupportedOperationException e) {
 			try {
 				String applicationName = "Flink Application: " + programName;
-				client = activeCommandLine.createCluster(applicationName, options.getCommandLine(), config);
+				client = activeCommandLine.createCluster(applicationName, options.getCommandLine(), additionalConf);
 				logAndSysout("Cluster started: " + client.getClusterIdentifier());
 			} catch (UnsupportedOperationException e2) {
 				throw new IllegalConfigurationException(

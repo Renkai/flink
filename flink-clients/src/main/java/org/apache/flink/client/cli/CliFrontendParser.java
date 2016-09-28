@@ -75,6 +75,9 @@ public class CliFrontendParser {
 	static final Option SAVEPOINT_DISPOSE_OPTION = new Option("d", "dispose", true,
 			"Path of savepoint to dispose.");
 
+	static final Option ADDITIONAL_CONFIG_FILE = new Option("ac","additionalConf",true,
+		"Additional configuration file as supplement of default flink-conf.yaml");
+
 	// list specific options
 	static final Option RUNNING_OPTION = new Option("r", "running", false,
 			"Show only running programs and their JobIDs");
@@ -118,6 +121,9 @@ public class CliFrontendParser {
 
 		ZOOKEEPER_NAMESPACE_OPTION.setRequired(false);
 		ZOOKEEPER_NAMESPACE_OPTION.setArgName("zookeeperNamespace");
+
+		ADDITIONAL_CONFIG_FILE.setRequired(false);
+		ADDITIONAL_CONFIG_FILE.setArgName("confFilePath");
 	}
 
 	private static final Options RUN_OPTIONS = getRunOptions(buildGeneralOptions(new Options()));
@@ -139,6 +145,7 @@ public class CliFrontendParser {
 	}
 
 	public static Options getProgramSpecificOptions(Options options) {
+		options.addOption(ADDITIONAL_CONFIG_FILE);
 		options.addOption(JAR_OPTION);
 		options.addOption(CLASS_OPTION);
 		options.addOption(CLASSPATH_OPTION);
