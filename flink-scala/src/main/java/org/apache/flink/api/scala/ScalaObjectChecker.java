@@ -29,9 +29,11 @@ import org.apache.flink.api.common.InvalidProgramException;
 public class ScalaObjectChecker {
 	public static boolean isPotentialScalaObject(Object o) {
 		final Class<?> cls = o.getClass();
-		String clsName = cls.getCanonicalName();
+		String clsName = cls.getName();
 		if (clsName.length() > 0) {
 			char lastChar = clsName.charAt(clsName.length() - 1);
+			System.out.println("name: " +  clsName);
+			System.out.println("lastchar: " + lastChar);
 			if (lastChar == '$') {
 				return true;
 			} else {
@@ -45,6 +47,7 @@ public class ScalaObjectChecker {
 		if (isPotentialScalaObject(o)) {
 			String msg = "User defined function implemented by class " + o.getClass().getCanonicalName() +
 				" might be implemented by a Scala Object,it is forbidden by Flink since concurrent modification risks.";
+			System.out.println("throw");
 			throw new InvalidProgramException(msg);
 		}
 	}

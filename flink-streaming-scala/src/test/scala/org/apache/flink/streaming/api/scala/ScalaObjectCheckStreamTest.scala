@@ -15,31 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.flink.api.scala
+package org.apache.flink.streaming.api.scala
 
 import org.apache.flink.api.common.InvalidProgramException
-import org.apache.flink.api.common.functions.{MapFunction, RichMapFunction}
+import org.apache.flink.api.common.functions.RichMapFunction
 import org.junit.Test
 
-
-class ScalaObjectCheckerTest {
-
-  @Test(expected = classOf[InvalidProgramException])
-  def testAssertScalaForbidScalaObjectFunction(): Unit = {
-    object AScalaObject
-    ScalaObjectChecker.assertScalaForbidScalaObjectFunction(AScalaObject)
-  }
-
-  @Test
-  def testAssertScalaForbidScalaObjectFunction2(): Unit = {
-    class AScalaClass
-    ScalaObjectChecker.assertScalaForbidScalaObjectFunction(new AScalaClass)
-  }
+class ScalaObjectCheckStreamTest {
 
   @Test(expected = classOf[InvalidProgramException])
-  def testEnvForObject(): Unit = {
-    val env = ExecutionEnvironment.getExecutionEnvironment
+  def testStreamEnvForObject(): Unit = {
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
     val src = env.fromElements(1,2,3,4)
     object RichMapObject extends RichMapFunction[Int, Int] {
       override def map(value: Int): Int = value * 2
@@ -47,13 +33,15 @@ class ScalaObjectCheckerTest {
     src.map(RichMapObject)
   }
 
+
   @Test
-  def testEnvForClass(): Unit = {
-    val env = ExecutionEnvironment.getExecutionEnvironment
-    val src = env.fromCollection(Seq(1, 2, 3))
+  def testStreamEnvForClass(): Unit = {
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val src = env.fromElements(1, 2, 3)
     class RichMapClass extends RichMapFunction[Int, Int] {
       override def map(value: Int): Int = value * 2
     }
+
     src.map(new RichMapClass)
   }
 }

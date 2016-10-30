@@ -109,18 +109,18 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
 
   /* This code is originally from the Apache Spark project. */
   /**
-   * Clean a closure to make it ready to serialized and send to tasks
-   * (removes unreferenced variables in $outer's, updates REPL variables)
-   * If <tt>checkSerializable</tt> is set, <tt>clean</tt> will also proactively
-   * check to see if <tt>f</tt> is serializable and throw a <tt>SparkException</tt>
-   * if not.
-   *
-   * @param f the closure to clean
-   * @param checkSerializable whether or not to immediately check <tt>f</tt> for serializability
-   * @throws InvalidProgramException if <tt>checkSerializable</tt> is set but <tt>f</tt>
-   *          is not serializable
-   */
-  private[flink] def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
+    * 1. Check if the function is implemented by a scala object. Checks only if scala object function forbidden
+    *    is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]]
+    *
+    *  2. Returns a "closure-cleaned" version of the given function. Cleans only if closure cleaning
+    *     is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]]
+    */
+  private[flink] def scalaCheckAndclean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
+
+    if (set.getExecutionEnvironment.getConfig.isScalaObjectFunctionForbidden) {
+      ScalaObjectChecker.assertScalaForbidScalaObjectFunction(f)
+    }
+
     if (set.getExecutionEnvironment.getConfig.isClosureCleanerEnabled) {
       ClosureCleaner.clean(f, checkSerializable)
     }
@@ -294,7 +294,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("Map function must not be null.")
     }
     val mapper = new MapFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def map(in: T): R = cleanFun(in)
     }
     wrap(new MapOperator[T, R](javaSet,
@@ -336,7 +336,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("MapPartition function must not be null.")
     }
     val partitionMapper = new MapPartitionFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def mapPartition(in: java.lang.Iterable[T], out: Collector[R]) {
         cleanFun(in.iterator().asScala, out)
       }
@@ -361,7 +361,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("MapPartition function must not be null.")
     }
     val partitionMapper = new MapPartitionFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def mapPartition(in: java.lang.Iterable[T], out: Collector[R]) {
         cleanFun(in.iterator().asScala) foreach out.collect
       }
@@ -395,7 +395,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("FlatMap function must not be null.")
     }
     val flatMapper = new FlatMapFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def flatMap(in: T, out: Collector[R]) { cleanFun(in, out) }
     }
     wrap(new FlatMapOperator[T, R](javaSet,
@@ -413,7 +413,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("FlatMap function must not be null.")
     }
     val flatMapper = new FlatMapFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def flatMap(in: T, out: Collector[R]) { cleanFun(in) foreach out.collect }
     }
     wrap(new FlatMapOperator[T, R](javaSet,
@@ -440,7 +440,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("Filter function must not be null.")
     }
     val filter = new FilterFunction[T] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def filter(in: T) = cleanFun(in)
     }
     wrap(new FilterOperator[T](javaSet, filter, getCallLocationName()))
@@ -541,9 +541,9 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
   def collect(): Seq[T] = {
     val id = new AbstractID().toString
     val serializer = getType().createSerializer(getExecutionEnvironment.getConfig)
-    
+
     javaSet.output(new Utils.CollectHelper[T](id, serializer))
-    
+
     val res = getExecutionEnvironment.execute()
 
     val accResult: java.util.ArrayList[Array[Byte]] = res.getAccumulatorResult(id)
@@ -581,7 +581,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("Reduce function must not be null.")
     }
     val reducer = new ReduceFunction[T] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def reduce(v1: T, v2: T) = { cleanFun(v1, v2) }
     }
     wrap(new ReduceOperator[T](javaSet, reducer, getCallLocationName()))
@@ -613,7 +613,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("GroupReduce function must not be null.")
     }
     val reducer = new GroupReduceFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def reduce(in: java.lang.Iterable[T], out: Collector[R]) {
         cleanFun(in.iterator().asScala, out)
       }
@@ -632,7 +632,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("GroupReduce function must not be null.")
     }
     val reducer = new GroupReduceFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def reduce(in: java.lang.Iterable[T], out: Collector[R]) {
         out.collect(cleanFun(in.iterator().asScala))
       }
@@ -688,7 +688,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       throw new NullPointerException("Combine function must not be null.")
     }
     val combiner = new GroupCombineFunction[T, R] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def combine(in: java.lang.Iterable[T], out: Collector[R]) {
         cleanFun(in.iterator().asScala, out)
       }
@@ -778,7 +778,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    */
   def distinct[K: TypeInformation](fun: T => K): DataSet[T] = {
     val keyExtractor = new KeySelector[T, K] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def getKey(in: T) = cleanFun(in)
     }
     wrap(new DistinctOperator[T](
@@ -790,7 +790,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
 
   /**
    * Returns a distinct set of this DataSet.
-   * 
+   *
    * <p>If the input is a composite type (Tuple or Pojo type), distinct is performed on all fields
    * and each field must be a key type.</p>
    */
@@ -800,10 +800,10 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
 
   /**
    * Returns a distinct set of a tuple DataSet using field position keys.
-   * 
+   *
    * <p>The field position keys specify the fields of Tuples on which the decision is made if
    * two Tuples are distinct or not.</p>
-   * 
+   *
    * <p>Note: Field position keys can only be specified for Tuple DataSets.</p>
    *
    * @param fields One or more field positions on which the distinction of the DataSet is decided.
@@ -817,7 +817,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
 
   /**
    * Returns a distinct set of this DataSet using expression keys.
-   * 
+   *
    * <p>The field position keys specify the fields of Tuples or Pojos on which the decision is made
    * if two elements are distinct or not.</p>
    *
@@ -853,7 +853,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
   def groupBy[K: TypeInformation](fun: T => K): GroupedDataSet[T] = {
     val keyType = implicitly[TypeInformation[K]]
     val keyExtractor = new KeySelector[T, K] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def getKey(in: T) = cleanFun(in)
     }
     new GroupedDataSet[T](this,
@@ -943,7 +943,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    */
   def join[O](other: DataSet[O], strategy: JoinHint): UnfinishedJoinOperation[T, O] =
     new UnfinishedJoinOperation(this, other, strategy)
-  
+
   /**
    * Special [[join]] operation for explicitly telling the system that the right side is assumed
    * to be a lot smaller than the left side of the join.
@@ -1394,7 +1394,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    */
   def partitionByHash[K: TypeInformation](fun: T => K): DataSet[T] = {
     val keyExtractor = new KeySelector[T, K] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def getKey(in: T) = cleanFun(in)
     }
     val op = new PartitionOperator[T](
@@ -1450,7 +1450,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
    */
   def partitionByRange[K: TypeInformation](fun: T => K): DataSet[T] = {
     val keyExtractor = new KeySelector[T, K] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def getKey(in: T) = cleanFun(in)
     }
     val op = new PartitionOperator[T](
@@ -1463,12 +1463,12 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       getCallLocationName())
     wrap(op)
   }
-  
+
   /**
    * Partitions a tuple DataSet on the specified key fields using a custom partitioner.
    * This method takes the key position to partition on, and a partitioner that accepts the key
    * type.
-   * <p> 
+   * <p>
    * Note: This method works only on single field keys.
    */
   def partitionCustom[K: TypeInformation](partitioner: Partitioner[K], field: Int) : DataSet[T] = {
@@ -1478,7 +1478,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       partitioner,
       implicitly[TypeInformation[K]],
       getCallLocationName())
-      
+
     wrap(op)
   }
 
@@ -1497,7 +1497,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       partitioner,
       implicitly[TypeInformation[K]],
       getCallLocationName())
-      
+
     wrap(op)
   }
 
@@ -1512,10 +1512,10 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
   def partitionCustom[K: TypeInformation](partitioner: Partitioner[K], fun: T => K)
     : DataSet[T] = {
     val keyExtractor = new KeySelector[T, K] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def getKey(in: T) = cleanFun(in)
     }
-    
+
     val keyType = implicitly[TypeInformation[K]]
 
     val op = new PartitionOperator[T](
@@ -1527,7 +1527,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
       partitioner,
       keyType,
       getCallLocationName())
-      
+
     wrap(op)
   }
 
@@ -1578,7 +1578,7 @@ class DataSet[T: ClassTag](set: JavaDataSet[T]) {
     */
   def sortPartition[K: TypeInformation](fun: T => K, order: Order): DataSet[T] ={
     val keyExtractor = new KeySelector[T, K] {
-      val cleanFun = clean(fun)
+      val cleanFun = scalaCheckAndclean(fun)
       def getKey(in: T) = cleanFun(in)
     }
 

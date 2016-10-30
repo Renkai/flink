@@ -661,9 +661,9 @@ class StreamExecutionEnvironment(javaEnv: JavaEnv) {
     * 1. Check if the function is implemented by a scala object. Checks only if scala object function forbidden
     *    is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]]
     *
-   *  2. Returns a "closure-cleaned" version of the given function. Cleans only if closure cleaning
-   *     is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]]
-   */
+    *  2. Returns a "closure-cleaned" version of the given function. Cleans only if closure cleaning
+    *     is not disabled in the [[org.apache.flink.api.common.ExecutionConfig]]
+    */
   private[flink] def scalaCheckAndClean[F <: AnyRef](f: F): F = {
 
     if (getConfig.isScalaObjectFunctionForbidden) {
