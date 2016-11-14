@@ -114,7 +114,7 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
    * @return The data stream that is the result of applying the reduce function to the window.
    */
   def reduce(function: ReduceFunction[T]): DataStream[T] = {
-    asScalaStream(javaStream.reduce(clean(function)))
+    asScalaStream(javaStream.reduce(clean(check(function))))
   }
 
   /**
@@ -136,7 +136,7 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
     if (function == null) {
       throw new NullPointerException("Reduce function must not be null.")
     }
-    val cleanFun = clean(function)
+    val cleanFun = clean(check(function))
     val reducer = new ScalaReduceFunction[T](cleanFun)
     reduce(reducer)
   }
@@ -173,7 +173,7 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
     if (function == null) {
       throw new NullPointerException("Fold function must not be null.")
     }
-    val cleanFun = clean(function)
+    val cleanFun = clean(check(function))
     val folder = new ScalaFoldFunction[T, R](cleanFun)
     fold(initialValue, folder)
   }
@@ -192,7 +192,7 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
   def apply[R: TypeInformation](
       function: WindowFunction[T, R, K, W]): DataStream[R] = {
     
-    val cleanFunction = clean(function)
+    val cleanFunction = clean(check(function))
     val applyFunction = new ScalaWindowFunctionWrapper[T, R, K, W](cleanFunction)
     asScalaStream(javaStream.apply(applyFunction, implicitly[TypeInformation[R]]))
   }
@@ -214,7 +214,7 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
       throw new NullPointerException("WindowApply function must not be null.")
     }
 
-    val cleanedFunction = clean(function)
+    val cleanedFunction = clean(check(function))
     val applyFunction = new ScalaWindowFunction[T, R, K, W](cleanedFunction)
     
     asScalaStream(javaStream.apply(applyFunction, implicitly[TypeInformation[R]]))
@@ -235,8 +235,8 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
       preAggregator: ReduceFunction[T],
       function: WindowFunction[T, R, K, W]): DataStream[R] = {
 
-    val cleanedPreAggregator = clean(preAggregator)
-    val cleanedWindowFunction = clean(function)
+    val cleanedPreAggregator = clean(check(preAggregator))
+    val cleanedWindowFunction = clean(check(function))
 
     val applyFunction = new ScalaWindowFunctionWrapper[T, R, K, W](cleanedWindowFunction)
 
@@ -266,8 +266,8 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
       throw new NullPointerException("WindowApply function must not be null.")
     }
 
-    val cleanReducer = clean(preAggregator)
-    val cleanWindowFunction = clean(windowFunction)
+    val cleanReducer = clean(check(preAggregator))
+    val cleanWindowFunction = clean(check(windowFunction))
     
     val reducer = new ScalaReduceFunction[T](cleanReducer)
     val applyFunction = new ScalaWindowFunction[T, R, K, W](cleanWindowFunction)
@@ -292,8 +292,8 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
       foldFunction: FoldFunction[T, R],
       function: WindowFunction[R, R, K, W]): DataStream[R] = {
 
-    val cleanedFunction = clean(function)
-    val cleanedFoldFunction = clean(foldFunction)
+    val cleanedFunction = clean(check(function))
+    val cleanedFoldFunction = clean(check(foldFunction))
 
     val applyFunction = new ScalaWindowFunctionWrapper[R, R, K, W](cleanedFunction)
 
@@ -327,8 +327,8 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
       throw new NullPointerException("WindowApply function must not be null.")
     }
 
-    val cleanFolder = clean(foldFunction)
-    val cleanWindowFunction = clean(windowFunction)
+    val cleanFolder = clean(check(foldFunction))
+    val cleanWindowFunction = clean(check(windowFunction))
     
     val folder = new ScalaFoldFunction[T, R](cleanFolder)
     val applyFunction = new ScalaWindowFunction[R, R, K, W](cleanWindowFunction)
@@ -438,6 +438,13 @@ class WindowedStream[T, K, W <: Window](javaStream: JavaWStream[T, K, W]) {
    */
   private[flink] def clean[F <: AnyRef](f: F): F = {
     new StreamExecutionEnvironment(javaStream.getExecutionEnvironment).scalaClean(f)
+  }
+
+  /**
+    * Check if the user defined function is a legal function.
+    */
+  private[flink] def check[F <: AnyRef](f: F): F = {
+    new StreamExecutionEnvironment(javaStream.getExecutionEnvironment).scalaCheck(f)
   }
 
   /**
